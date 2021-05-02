@@ -110,7 +110,7 @@ function rewriteUrl(url: PartialUrl | UrlFunction, options: Options) {
   };
 }
 
-function isMatch(matcher: Matcher | Matcher[], options: Options) {
+function isMatch(matcher: Matcher | Matcher[] | undefined, options: Options) {
   if (!matcher) {
     return false;
   }

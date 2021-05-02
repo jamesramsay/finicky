@@ -1,5 +1,4 @@
 import { validateConfig } from "../src/validateConfig";
-import { validate } from "@babel/types";
 
 function makeValidate(config: any) {
   return function validate() {
@@ -9,8 +8,7 @@ function makeValidate(config: any) {
 
 describe("test", () => {
   test("empty config", () => {
-    const config = {};
-    expect(makeValidate(config)).toThrow();
+    expect(makeValidate({})).toThrow();
   });
 
   test("invalid config", () => {
@@ -20,7 +18,7 @@ describe("test", () => {
 
   test("valid minimal config", () => {
     const config = {
-      defaultBrowser: "Browser"
+      defaultBrowser: "Browser",
     };
 
     expect(validateConfig(config)).toBe(true);
@@ -29,7 +27,7 @@ describe("test", () => {
   test("invalid minimal config", () => {
     const config = {
       defaultBrowser: "Browser",
-      invalidKey: "This key is invalid"
+      invalidKey: "This key is invalid",
     };
 
     expect(makeValidate(config)).toThrow();
@@ -38,7 +36,7 @@ describe("test", () => {
   test("invalid minimal config", () => {
     const config = {
       defaultBrowser: "Browser",
-      defaultBrowserss: "Browser"
+      defaultBrowserss: "Browser",
     };
 
     expect(makeValidate(config)).toThrow();

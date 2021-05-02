@@ -18,17 +18,20 @@ type SystemInfoFunction = () => {
 };
 
 // Finicky Config API
-export type ConfigAPI = {
+export interface ConfigAPI extends InternalAPI {
+  getUrlParts: typeof parseUrl;
+  parseUrl: typeof parseUrl;
+  matchHostnames: typeof matchHostnames;
+  matchDomains: typeof matchHostnames;
+}
+
+export interface InternalAPI {
   log: LogFunction;
   notify: NotifyFunction;
   getBattery: BatteryFunction;
   getSystemInfo: SystemInfoFunction;
-  getUrlParts: typeof parseUrl;
-  parseUrl: typeof parseUrl;
   getKeys(): KeyOptions;
-  matchHostnames: typeof matchHostnames;
-  matchDomains: typeof matchHostnames;
-};
+}
 
 /**
  * This represents the full `.finicky.js` `module.exports` object.
@@ -81,9 +84,19 @@ export type BrowserResult =
   | Array<Browser | BrowserFunction>;
 
 /**
- * A handler contains a matcher and a browser. If the matcher matches when opening a url, the browser in the handler will be opened.
+ * A handler contains a browser, and a matcher and/or a hostname matcher. If the matcher matches when opening a url, the browser in the handler will be opened.
  */
-export interface Handler {
+export type Handler = HostnameHandler | MatchHandler;
+
+export interface HostnameHandler {
+  hostname: Matcher | Matcher[];
+  match?: Matcher | Matcher[];
+  url?: PartialUrl | UrlFunction;
+  browser: BrowserResult;
+}
+
+export interface MatchHandler {
+  hostname?: Matcher | Matcher[];
   match: Matcher | Matcher[];
   url?: PartialUrl | UrlFunction;
   browser: BrowserResult;
@@ -92,7 +105,16 @@ export interface Handler {
 /**
  * A rewriter contains a matcher and a url. If the matcher matches when opening a url, the final url will be changed to whatever the url property is.
  */
-export interface Rewriter {
+export type Rewriter = HostnameRewriter | MatchRewriter;
+
+export interface HostnameRewriter {
+  hostname: Matcher | Matcher[];
+  match?: Matcher | Matcher[];
+  url: PartialUrl | UrlFunction;
+}
+
+export interface MatchRewriter {
+  hostname?: Matcher | Matcher[];
   match: Matcher | Matcher[];
   url: PartialUrl | UrlFunction;
 }

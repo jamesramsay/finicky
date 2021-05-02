@@ -84,10 +84,10 @@ export function validateSchema(
  */
 export function deprecate<T extends Object>(
   target: T,
-  deprecated: Map<keyof T, string>
+  deprecated: Map<string | symbol, string>
 ): T {
   const handler = {
-    get: function (target: T, prop: keyof T, receiver?: any) {
+    get: function (target: T, prop: string | symbol, receiver?: any) {
       if (deprecated.has(prop)) {
         // @ts-ignore
         finicky.log("⚠️", prop, "is deprecated: ", deprecated.get(prop));

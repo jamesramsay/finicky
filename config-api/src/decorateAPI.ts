@@ -1,26 +1,24 @@
 import urlParse from "url-parse";
-import { ConfigAPI, UrlObject, Matcher, Options } from "./types";
-
-declare const finickyInternalAPI: any;
+import { ConfigAPI, UrlObject, Matcher, Options, InternalAPI } from "./types";
 
 /**
  * Extends finicky js api with some utility functions.
  */
-export function createAPI(overrides: Partial<ConfigAPI> = {}): ConfigAPI {
-  if (typeof finickyInternalAPI === "undefined") {
-    throw new Error(`[finicky warn] finickyInternalAPI not available`);
-  }
-
+export function decorateAPI(
+  finickyInternalAPI: InternalAPI,
+  overrides: Partial<ConfigAPI> = {}
+): ConfigAPI {
   return {
-    log: (...messages: string[]) => finickyInternalAPI.log(messages.join(" ")),
-    notify: (title: string, subtitle: string) =>
-      finickyInternalAPI.notify(title, subtitle),
-    getBattery: () => finickyInternalAPI.getBattery(),
-    getKeys: () => finickyInternalAPI.getKeys(),
-    getSystemInfo: () => finickyInternalAPI.getSystemInfo(),
+    ...finickyInternalAPI,
+    log: (message: string | string[]) => {
+      const messages = Array.isArray(message) ? message : [message];
+      finickyInternalAPI.log(messages.join(" "));
+    },
     parseUrl,
-    getUrlParts: parseUrl,
     matchHostnames,
+
+    // Legacy naming
+    getUrlParts: parseUrl,
     matchDomains: matchHostnames,
     ...overrides,
   };
