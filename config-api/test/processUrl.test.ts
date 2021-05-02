@@ -1,20 +1,25 @@
-import { Handler, Rewriter } from "./../src/types";
-import { decorateAPI } from "../src/decorateAPI";
+import { ConfigAPI } from "../src/types";
 import {
   curryProcessUrl,
   id,
   createRewriteRule,
-  getKeys,
   createHandlerConfig,
+  api,
 } from "./testutils";
 
 const cpurl = curryProcessUrl("https://test.example");
+declare global {
+  namespace NodeJS {
+    interface Global {
+      finicky: ConfigAPI;
+    }
+  }
+}
 
 describe("Rewrites", () => {
   describe("Rewrite matcher", () => {
     beforeAll(() => {
-      // @ts-ignore
-      global.finicky = decorateAPI({ getKeys });
+      global.finicky = api;
     });
 
     test("function that returns true", () => {
@@ -49,8 +54,7 @@ describe("Rewrites", () => {
 
   describe("Rewrite url", () => {
     beforeAll(() => {
-      // @ts-ignore
-      global.finicky = decorateAPI();
+      global.finicky = api;
     });
 
     test("String", () => {
@@ -91,8 +95,7 @@ describe("Rewrites", () => {
 
   describe("Rewrite partial url", () => {
     beforeAll(() => {
-      // @ts-ignore
-      global.finicky = decorateAPI();
+      global.finicky = api;
     });
 
     test("Protocol change", () => {
@@ -125,8 +128,7 @@ const EXAMPLE_BUNDLEID = "bundle.id";
 describe("Handlers", () => {
   describe("Matcher", () => {
     beforeAll(() => {
-      // @ts-ignore
-      global.finicky = decorateAPI();
+      global.finicky = api;
     });
 
     test("function that returns true", () => {

@@ -1,3 +1,5 @@
+import chalk from "chalk";
+import { decorateAPI } from "../src";
 import { processUrl } from "../src/processUrl";
 import { FinickyConfig, Handler, Rewriter } from "../src/types";
 import { Matcher, UrlObject, Url, UrlFunction } from "../src/types";
@@ -33,17 +35,6 @@ export function createRewriteRule({
   };
 }
 
-export function getKeys() {
-  return {
-    shift: false,
-    option: false,
-    command: false,
-    control: false,
-    capsLock: false,
-    function: false,
-  };
-}
-
 const EXAMPLE_BROWSER = "Default Browser";
 
 export function createHandlerConfig(handlers: Handler | Handler[]) {
@@ -59,3 +50,30 @@ export function createRewriteConfig(rewrite: Rewriter[]) {
     rewrite: Array.isArray(rewrite) ? rewrite : [rewrite],
   };
 }
+
+export const api = decorateAPI({
+  log(message) {
+    console.log(chalk`{dim [log]} ${message}`);
+  },
+  notify(title, subtitle) {
+    console.log(chalk`{dim [notification]} {bold ${title}} ${subtitle}`);
+  },
+  getBattery: () => ({
+    chargePercentage: 50,
+    isCharging: true,
+    isPluggedIn: true,
+  }),
+  getSystemInfo: () => ({
+    name: "name",
+    localizedName: "localized name",
+    address: "127.0.0.1",
+  }),
+  getKeys: () => ({
+    shift: false,
+    option: false,
+    command: false,
+    control: false,
+    capsLock: false,
+    function: false,
+  }),
+});

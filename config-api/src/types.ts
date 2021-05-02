@@ -1,4 +1,4 @@
-import { parseUrl, matchHostnames } from "./createAPI";
+import { parseUrl, matchHostnames } from "./decorateAPI";
 
 /**
  * Finicky Configuration Types
