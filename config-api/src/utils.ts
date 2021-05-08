@@ -1,6 +1,4 @@
-import { UrlObject, AppType, Options } from "./types";
-import { ISchema, IValidator } from "./fastidious/types";
-import { getErrors } from "./fastidious/index";
+import { AppType, UrlObject } from "./types";
 
 export function createRegularExpression(pattern: string) {
   if (!pattern) {
@@ -20,10 +18,6 @@ export function createRegularExpression(pattern: string) {
 }
 
 export function guessAppType(value: string): AppType {
-  if (value === null) {
-    return "none";
-  }
-
   if (looksLikeBundleIdentifier(value)) {
     return "bundleId";
   }
@@ -61,22 +55,6 @@ export function composeUrl(url: UrlObject) {
   auth += url.password ? `:${url.password}` : "";
 
   return `${protocol}://${auth}${host}${port}${pathname}${search}${hash}`;
-}
-
-/**
- * Validate fastidious schema
- */
-export function validateSchema(
-  value: unknown,
-  schema: ISchema | IValidator,
-  path = ""
-) {
-  const errors = getErrors(value, schema, path);
-  if (errors.length > 0) {
-    throw new Error(
-      errors.join("\n") + "\nReceived value: " + JSON.stringify(value, null, 2)
-    );
-  }
 }
 
 /**

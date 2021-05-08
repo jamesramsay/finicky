@@ -1,7 +1,8 @@
 import { parseUrl, matchHostnames } from "./decorateAPI";
+import { z } from "zod";
 
 /**
- * Finicky Configuration Types
+ * Finicky API Types
  */
 
 type LogFunction = (...messages: string[]) => void;
@@ -11,6 +12,7 @@ type BatteryFunction = () => {
   isCharging: boolean;
   isPluggedIn: boolean;
 };
+
 type SystemInfoFunction = () => {
   name: string;
   localizedName: string;
@@ -34,202 +36,178 @@ export interface InternalAPI {
 }
 
 /**
- * This represents the full `.finicky.js` `module.exports` object.
- *
- * Example:
- *
- * ```js
- *  module.exports = {
- *    defaultBrowser: "Google Chrome",
- *    options: {
- *      hideIcon: false
- *    },
- *    handlers: [{
- *      match: finicky.matchHostnames("example.com'),
- *      browser: "Firefox"
- *    }]
- *  }
- * ```
+ * Finicky Configuration Schemas and Types
  */
-export interface FinickyConfig {
-  /** The default browser or app to open for urls where no other handler
-   * matches.
-   */
-  defaultBrowser: Browser | BrowserFunction | Array<Browser | BrowserFunction>;
-  options?: {
-    /* Whether or not to hide the finicky icon in the menu bar */
-    hideIcon?: boolean;
-    /**
-     * An array of domain names to replace the built in list of url
-     * shortener domains. Note that using this option replaces the list
-     * completely.
-     *
-     * Alternatively a function that returns an array of domains
-     */
-    urlShorteners?: string[] | ((hostnames: string[]) => string[]);
-    /**
-     * Log all requests to console
-     */
-    logRequests?: boolean;
-  };
-  /* An array of Rewriters that can change the url being opened */
-  rewrite?: Rewriter[];
-  /* An array of Handlers to select which browser to open for urls */
-  handlers?: Handler[];
-}
 
-export type BrowserResult =
-  | Browser
-  | BrowserFunction
-  | Array<Browser | BrowserFunction>;
+/******************
+ * Function options
+ ******************/
 
-/**
- * A handler contains a browser, and a matcher and/or a hostname matcher. If the matcher matches when opening a url, the browser in the handler will be opened.
- */
-export type Handler = HostnameHandler | MatchHandler;
+const urlObjectSchema = z.object({
+  protocol: z.string(),
+  username: z.string().optional(),
+  password: z.string().optional(),
+  host: z.string(),
+  port: z.union([z.number(), z.literal(null)]).optional(),
+  pathname: z.string().optional(),
+  search: z.string().optional(),
+  hash: z.string().optional(),
+});
 
-export interface HostnameHandler {
-  hostname: Matcher | Matcher[];
-  match?: Matcher | Matcher[];
-  url?: PartialUrl | UrlFunction;
-  browser: BrowserResult;
-}
+const application = z.object({
+  pid: z.number(),
+  path: z.string().optional(),
+  bundleId: z.string().optional(),
+  name: z.string().optional(),
+});
 
-export interface MatchHandler {
-  hostname?: Matcher | Matcher[];
-  match: Matcher | Matcher[];
-  url?: PartialUrl | UrlFunction;
-  browser: BrowserResult;
-}
+export type Application = z.infer<typeof application>;
 
-/**
- * A rewriter contains a matcher and a url. If the matcher matches when opening a url, the final url will be changed to whatever the url property is.
- */
-export type Rewriter = HostnameRewriter | MatchRewriter;
+const functionOptions = z.object({
+  urlString: z.string(),
+  url: urlObjectSchema,
+  opener: application,
+});
 
-export interface HostnameRewriter {
-  hostname: Matcher | Matcher[];
-  match?: Matcher | Matcher[];
-  url: PartialUrl | UrlFunction;
-}
+export type FunctionOptions = z.infer<typeof functionOptions>;
 
-export interface MatchRewriter {
-  hostname?: Matcher | Matcher[];
-  match: Matcher | Matcher[];
-  url: PartialUrl | UrlFunction;
-}
+/******************
+ * URL
+ * A string, a partial object or a funtion returning either
+ ******************/
 
-/**
- * Matches urls (or other properties) to decide if to change the url or open a browser.
- *
- * If the matcher is a string, if the url equals the string exactly, it will match.
- * If the matcher is a regular expression, if it matches any part of the url, it will match.
- * If the matcher is a [[MatcherFunction]], it will match if the function returns `true`
- *
- */
-export type Matcher = string | RegExp | MatcherFunction;
-export type MatcherFunction = (options: Options) => boolean;
+const urlPartialSchema = z.union([z.string(), urlObjectSchema.partial()]);
 
-/**
- * Represents a browser or app that finicky could start
- */
-export type Browser = string | BrowserObject;
+export const urlSchema = z.union([z.string(), urlObjectSchema]);
+const urlResult = z.union([z.string(), urlPartialSchema]);
 
-/**
- * Represents the type of app to start. "None" means to not start any app.
- */
-export type AppType = "appName" | "bundleId" | "appPath" | "none";
+const urlFunction = z.function().args(functionOptions).returns(urlResult);
 
-/**
- * Represents a browser or app to open
- */
-export interface BrowserObject {
-  name: string;
-  appType?: AppType;
-  openInBackground?: boolean;
-  profile?: string;
-  args?: string[];
-}
+export type URL = z.infer<typeof urlSchema>;
+export type URLFunction = z.infer<typeof urlFunction>;
+export type UrlObject = z.infer<typeof urlObjectSchema>;
+export type PartialURL = z.infer<typeof urlPartialSchema>;
 
-/**
- * A function that returns a browser to open
- */
-type BrowserFunction = (options: Options) => Browser;
+/******************
+ * Browser
+ * A string, an object or a funtion returning either
+ ******************/
 
-/**
- * Represents a url that will be handled by finicky
- */
-export type Url = string | UrlObject;
+const appType = z.union([
+  z.literal("appName"),
+  z.literal("appPath"),
+  z.literal("bundleId"),
+  z.literal("none"),
+]);
 
-/**
- * Represents a url that will be handled by finicky
- */
-export type PartialUrl = string | Partial<UrlObject>;
+export type AppType = z.infer<typeof appType>;
 
-/**
- * An object that represents a url
- */
-export interface UrlObject {
-  protocol: string;
-  username?: string;
-  password?: string;
-  host: string;
-  port?: number;
-  pathname?: string;
-  search?: string;
-  hash?: string;
-}
+export const browserObject = z.object({
+  name: z.string(),
+  openInBackground: z.boolean().optional(),
+  appType: appType.optional(),
+  profile: z.string().optional(),
+  args: z.array(z.string()).optional(),
+});
+
+const browserValue = z.union([z.string(), z.literal(null), browserObject]);
+
+const browserFunction = z
+  .function()
+  .args(functionOptions)
+  .returns(browserValue);
+
+const matcherFunction = z.function().args(functionOptions).returns(z.boolean());
+
+const browserSchema = browserFunction.or(browserValue);
+
+const browserResult = z.union([browserSchema, z.array(browserSchema)]);
+
+export type BrowserValue = z.infer<typeof browserValue>;
+export type BrowserObject = z.infer<typeof browserObject>;
+export type Browser = z.infer<typeof browserSchema>;
+export type BrowserResult = z.infer<typeof browserResult>;
+
+/******************
+ * Options
+ * Miscellaneous options to set
+ ******************/
+
+const hostnames = z.array(z.string());
+
+const options = z.object({
+  hideIcon: z.boolean().default(false),
+  checkForUpdate: z.boolean().default(true),
+  logRequests: z.boolean().default(false),
+  urlShorteners: z.union([
+    hostnames,
+    z.function().args(hostnames).returns(hostnames),
+  ]),
+});
+
+/******************
+ * Matching
+ ******************/
+
+const matcher = z.union([z.string(), z.instanceof(RegExp), matcherFunction]);
+
+export type Matcher = z.infer<typeof matcher>;
+
+/******************
+ * Rewriting
+ ******************/
+
+const urlResultSchema = z.union([urlResult, urlFunction]);
+
+const rewriter = z.object({
+  match: z.union([matcher, z.array(matcher)]),
+  url: urlResultSchema,
+});
+
+export type Rewriter = z.infer<typeof rewriter>;
+
+/******************
+ * Handling
+ ******************/
+
+const handler = rewriter.extend({
+  browser: z.union([browserSchema, z.array(browserSchema)]),
+  match: z.union([matcher, z.array(matcher)]),
+  url: urlResultSchema.optional(),
+});
+
+export type Handler = z.infer<typeof handler>;
+
+export type ProcessUrlResult = {
+  browsers: BrowserObject[];
+  url: string;
+};
+
+/******************
+ * Full config
+ ******************/
+
+export const configSchema = z
+  .object({
+    defaultBrowser: browserResult.default("Safari"),
+    options: options.partial().optional(),
+    rewrite: z.array(rewriter).optional(),
+    handlers: z.array(handler).optional(),
+  })
+  .strict();
+
+export type FinickyConfig = z.infer<typeof configSchema>;
 
 /**
  * An object that represents a key options object
  */
-export interface KeyOptions {
-  shift: boolean;
-  option: boolean;
-  command: boolean;
-  control: boolean;
-  capsLock: boolean;
-  function: boolean;
-}
+const keyOptions = z.object({
+  shift: z.boolean().default(false),
+  option: z.boolean().default(false),
+  command: z.boolean().default(false),
+  control: z.boolean().default(false),
+  capsLock: z.boolean().default(false),
+  function: z.boolean().default(false),
+});
 
-/**
- * A function that returns a url
- */
-export type UrlFunction = (options: Options) => PartialUrl;
-
-export type Application = {
-  pid: number;
-  path?: string;
-  bundleId?: string;
-  name?: string;
-};
-
-/**
- * Options sent as the argument to [[ProcessUrl]]
- */
-export interface ProcessOptions {
-  /** The opening application */
-  opener: Application;
-}
-
-/**
- * Options sent as the argument to [[MatcherFunction]], [[BrowserFunction]] and [[UrlFunction]]
- */
-export interface Options extends ProcessOptions {
-  /** The url being opened */
-  urlString: string;
-  /** The url being opened as an object */
-  url: UrlObject;
-  /** If opened from an app, this string contains the bundle identifier from that app
-   * @deprecated Use opener.bundleId instead
-   */
-  sourceBundleIdentifier?: string;
-  /** If opened from an app, this string contains the path to that app
-   * @deprecated Use opener.path instead
-   */
-  sourceProcessPath?: string;
-  /** The state of keyboard state. E.g. shift === true if pressed.
-   * @deprecated Use finicky.getKeys() instead
-   */
-  keys: KeyOptions;
-}
+type KeyOptions = z.infer<typeof keyOptions>;

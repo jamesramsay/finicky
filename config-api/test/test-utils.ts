@@ -2,31 +2,25 @@ import chalk from "chalk";
 import { decorateAPI } from "../src";
 import { processUrl } from "../src/processUrl";
 import { FinickyConfig, Handler, Rewriter } from "../src/types";
-import { Matcher, UrlObject, Url, UrlFunction } from "../src/types";
-
-export function id<T>(value: T) {
-  return () => value;
-}
+import { Matcher, UrlObject, URL, URLFunction } from "../src/types";
 
 export function curryProcessUrl(url: string) {
-  const processOptions = {
-    opener: {
-      pid: 1337,
-      path: "/dev/null",
-      name: "Finicky",
-      bundleId: "net.kassett.Finicky",
-    },
+  const opener = {
+    pid: 1337,
+    path: "/dev/null",
+    name: "Finicky",
+    bundleId: "net.kassett.Finicky",
   };
 
   return (config: FinickyConfig, otherUrl?: string) =>
-    processUrl(config, otherUrl || url, processOptions);
+    processUrl(config, otherUrl || url, opener);
 }
 
 export function createRewriteRule({
   url = "https://test.changed",
   match = () => true,
 }: {
-  url?: Partial<UrlObject> | Url | UrlFunction;
+  url?: Partial<UrlObject> | URL | URLFunction;
   match?: Matcher;
 } = {}) {
   return {
@@ -41,13 +35,6 @@ export function createHandlerConfig(handlers: Handler | Handler[]) {
   return {
     defaultBrowser: EXAMPLE_BROWSER,
     handlers: Array.isArray(handlers) ? handlers : [handlers],
-  };
-}
-
-export function createRewriteConfig(rewrite: Rewriter[]) {
-  return {
-    defaultBrowser: EXAMPLE_BROWSER,
-    rewrite: Array.isArray(rewrite) ? rewrite : [rewrite],
   };
 }
 

@@ -1,19 +1,9 @@
 import { validateConfig } from "../src/validateConfig";
 
-function makeValidate(config: any) {
-  return function validate() {
-    return validateConfig(config);
-  };
-}
-
-describe("test", () => {
-  test("empty config", () => {
-    expect(makeValidate({})).toThrow();
-  });
-
+describe("basic test", () => {
   test("invalid config", () => {
     const config = "!! invalid config !!";
-    expect(makeValidate(config)).toThrow();
+    expect(() => validateConfig(config as any)).toThrow();
   });
 
   test("valid minimal config", () => {
@@ -30,15 +20,44 @@ describe("test", () => {
       invalidKey: "This key is invalid",
     };
 
-    expect(makeValidate(config)).toThrow();
+    expect(() => validateConfig(config)).toThrow();
   });
+});
 
-  test("invalid minimal config", () => {
+describe("default browser", () => {
+  test("browser string", () => {
     const config = {
       defaultBrowser: "Browser",
-      defaultBrowserss: "Browser",
     };
 
-    expect(makeValidate(config)).toThrow();
+    expect(validateConfig(config)).toBe(true);
+  });
+
+  test("browser function", () => {
+    const config = {
+      defaultBrowser: () => "Browser",
+    };
+
+    expect(validateConfig(config)).toBe(true);
+  });
+
+  test("browser object", () => {
+    const config = {
+      defaultBrowser: {
+        name: "Browser",
+      },
+    };
+
+    expect(validateConfig(config)).toBe(true);
+  });
+
+  test("browser object", () => {
+    const config = {
+      defaultBrowser: () => ({
+        name: "Browser",
+      }),
+    };
+
+    expect(validateConfig(config)).toBe(true);
   });
 });

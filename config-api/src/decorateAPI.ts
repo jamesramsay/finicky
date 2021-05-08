@@ -1,5 +1,11 @@
 import urlParse from "url-parse";
-import { ConfigAPI, UrlObject, Matcher, Options, InternalAPI } from "./types";
+import {
+  ConfigAPI,
+  UrlObject,
+  Matcher,
+  FunctionOptions,
+  InternalAPI,
+} from "./types";
 
 /**
  * Extends finicky js api with some utility functions.
@@ -66,7 +72,7 @@ export function matchHostnames(matchers: Matcher | Matcher[], ...args: any[]) {
     );
   });
 
-  return function Matcher({ url }: Options) {
+  return function Matcher({ url }: FunctionOptions) {
     const { host } = url;
     return (matchers as Matcher[]).some((matcher) => {
       if (matcher instanceof RegExp) {

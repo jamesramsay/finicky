@@ -1,21 +1,25 @@
 import {
+  urlSchema,
+  browserObject,
   FinickyConfig,
-  UrlObject,
-  Options,
-  Matcher,
-  BrowserResult,
-  Browser,
-  UrlFunction,
-  ProcessOptions,
-  PartialUrl,
+  Application,
   ConfigAPI,
+  FunctionOptions,
+  Browser,
+  URLFunction,
+  UrlObject,
+  Matcher,
+  PartialURL,
+  BrowserResult,
+  BrowserObject,
+  BrowserValue,
+  ProcessUrlResult,
 } from "./types";
-import { urlSchema, appDescriptorSchema } from "./schemas";
+
 import {
   createRegularExpression,
   guessAppType,
   composeUrl,
-  validateSchema,
   deprecate,
 } from "./utils";
 
@@ -30,24 +34,20 @@ declare const finicky: ConfigAPI;
 export function processUrl(
   config: FinickyConfig,
   url: string,
-  processOptions: ProcessOptions
-) {
-  let options: Options = {
+  opener: Application
+): ProcessUrlResult {
+  let options: FunctionOptions = {
     urlString: url,
     url: finicky.parseUrl(url),
-    keys: finicky.getKeys(),
-    sourceBundleIdentifier: processOptions?.opener?.bundleId,
-    sourceProcessPath: processOptions?.opener?.path,
-    ...processOptions,
+    opener,
   };
 
   if (config?.options?.logRequests) {
-    if (processOptions?.opener) {
-      const app = processOptions.opener;
+    if (opener) {
       finicky.log(
-        `Opening ${url} from ${app.name || "N/A"}\n\tbundleId: ${
-          app.bundleId || "N/A"
-        }\n\tpath: ${app.path || "N/A"}`
+        `Opening ${url} from ${opener.name || "N/A"}\n\tbundleId: ${
+          opener.bundleId || "N/A"
+        }\n\tpath: ${opener.path || "N/A"}`
       );
     } else {
       finicky.log(`Opening ${url} from an unknown application`);
@@ -65,7 +65,7 @@ export function processUrl(
   return processHandlers(config, options);
 }
 
-function processUrlRewrites(config: FinickyConfig, options: Options) {
+function processUrlRewrites(config: FinickyConfig, options: FunctionOptions) {
   if (Array.isArray(config.rewrite)) {
     for (let rewrite of config.rewrite) {
       if (isMatch(rewrite.match, options)) {
@@ -77,14 +77,24 @@ function processUrlRewrites(config: FinickyConfig, options: Options) {
   return options;
 }
 
-function processHandlers(config: FinickyConfig, options: Options) {
+function processHandlers(
+  config: FinickyConfig,
+  options: FunctionOptions
+): ProcessUrlResult {
   if (Array.isArray(config.handlers)) {
     for (let handler of config.handlers) {
       if (isMatch(handler.match, options)) {
         if (handler.url) {
           options = rewriteUrl(handler.url, options);
         }
-        return resolveBrowser(handler.browser, options);
+
+        const browser = handler.browser;
+
+        if (Array.isArray(browser)) {
+          return resolveBrowser(browser, options);
+        } else {
+          return resolveBrowser(browser, options);
+        }
       }
     }
   }
@@ -92,9 +102,11 @@ function processHandlers(config: FinickyConfig, options: Options) {
   return resolveBrowser(config.defaultBrowser, options);
 }
 
-function rewriteUrl(url: PartialUrl | UrlFunction, options: Options) {
+function rewriteUrl(url: PartialURL | URLFunction, options: FunctionOptions) {
   let urlResult = resolveUrl(url, options);
-  validateSchema({ url: urlResult }, urlSchema);
+
+  urlSchema.parse(urlResult);
+
   if (typeof urlResult === "string") {
     return {
       ...options,
@@ -110,7 +122,10 @@ function rewriteUrl(url: PartialUrl | UrlFunction, options: Options) {
   };
 }
 
-function isMatch(matcher: Matcher | Matcher[] | undefined, options: Options) {
+function isMatch(
+  matcher: Matcher | Matcher[] | undefined,
+  options: FunctionOptions
+) {
   if (!matcher) {
     return false;
   }
@@ -151,11 +166,14 @@ function isMatch(matcher: Matcher | Matcher[] | undefined, options: Options) {
 }
 
 // Recursively resolve handler to value
-function resolveUrl(result: PartialUrl | UrlFunction, options: Options) {
+function resolveUrl(
+  result: PartialURL | URLFunction,
+  options: FunctionOptions
+): UrlObject | string {
   if (typeof result === "string") {
     return result;
   } else if (typeof result === "object") {
-    return { ...options.url, ...result } as UrlObject;
+    return { ...options.url, ...result };
   }
 
   const resolved = result(options);
@@ -163,10 +181,13 @@ function resolveUrl(result: PartialUrl | UrlFunction, options: Options) {
     return resolved;
   }
 
-  return { ...options.url, ...resolved } as UrlObject;
+  return { ...options.url, ...resolved };
 }
 
-function resolveBrowser(browser: BrowserResult, options: Options) {
+function resolveBrowser(
+  browser: BrowserResult,
+  options: FunctionOptions
+): ProcessUrlResult {
   if (typeof browser === "function") {
     browser = browser(options);
   }
@@ -180,25 +201,32 @@ function resolveBrowser(browser: BrowserResult, options: Options) {
   return { browsers, url: options.urlString };
 }
 
-function createBrowser(browser: Browser) {
-  // If all we got was a string, try to figure out if it's a bundle identifier or an application name
-  if (typeof browser === "string" || browser === null) {
-    browser = {
-      name: browser,
-    };
-  }
+function createBrowser(browser: BrowserValue): BrowserObject {
+  let result: BrowserObject;
 
-  if (typeof browser === "object" && !browser.appType) {
+  if (
+    browser === null ||
+    (typeof browser === "object" && browser.appType === "none")
+  ) {
+    result = {
+      name: "",
+      appType: "none",
+    };
+  } else {
+    if (typeof browser === "string") {
+      browser = { name: browser };
+    }
+
     const name = browser.name === null ? "" : browser.name;
 
-    browser = {
+    result = {
       ...browser,
       name,
       appType: guessAppType(browser.name),
     };
   }
 
-  validateSchema(browser, appDescriptorSchema);
+  browserObject.parse(result);
 
-  return browser;
+  return result;
 }

@@ -1,5 +1,5 @@
 {
-  "name": "finicky-ts",
+  "name": "finicky-config-api",
   "version": "1.0.0",
   "description": "",
   "main": "dist/index.js",
@@ -23,8 +23,10 @@
     "prettier": "^2.0.5",
     "ts-jest": "^26.4.4",
     "ts-node": "^9.1.1",
-    "typescript": "^4.1.3",
-    "url-parse": "^1.5.0"
+    "url-parse": "^1.5.0",
+    "typescript": "^4.2.4"
   },
-  "dependencies": {}
+  "dependencies": {
+    "zod": "^3.0.0-alpha.40"
+  }
 }

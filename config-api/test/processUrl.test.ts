@@ -1,13 +1,12 @@
 import { ConfigAPI } from "../src/types";
 import {
   curryProcessUrl,
-  id,
   createRewriteRule,
   createHandlerConfig,
   api,
-} from "./testutils";
+} from "./test-utils";
 
-const cpurl = curryProcessUrl("https://test.example");
+const processUrl = curryProcessUrl("https://test.example");
 declare global {
   namespace NodeJS {
     interface Global {
@@ -16,6 +15,9 @@ declare global {
   }
 }
 
+const CHANGED_BROWSER = "Custom Browser";
+const EXAMPLE_BUNDLEID = "bundle.id";
+
 describe("Rewrites", () => {
   describe("Rewrite matcher", () => {
     beforeAll(() => {
@@ -23,28 +25,28 @@ describe("Rewrites", () => {
     });
 
     test("function that returns true", () => {
-      const config = createRewriteRule({ match: id(true) });
-      expect(cpurl(config).url).toBe("https://test.changed");
+      const config = createRewriteRule({ match: () => true });
+      expect(processUrl(config).url).toBe("https://test.changed");
     });
 
     test("function that returns false", () => {
-      const config = createRewriteRule({ match: id(false) });
-      expect(cpurl(config).url).not.toBe("https://test.changed");
+      const config = createRewriteRule({ match: () => false });
+      expect(processUrl(config).url).not.toBe("https://test.changed");
     });
 
     test("match regular expression", () => {
       const config = createRewriteRule({ match: /test\.example/ });
-      expect(cpurl(config).url).toBe("https://test.changed");
+      expect(processUrl(config).url).toBe("https://test.changed");
     });
 
     test("match string", () => {
       const config = createRewriteRule({ match: "https://test.example" });
-      expect(cpurl(config).url).toBe("https://test.changed");
+      expect(processUrl(config).url).toBe("https://test.changed");
     });
 
     test("match wildcard pattern", () => {
       const config = createRewriteRule({ match: "https://test.example/*" });
-      const result = cpurl(
+      const result = processUrl(
         config,
         "https://test.example/path?query=123#anchor"
       );
@@ -59,37 +61,37 @@ describe("Rewrites", () => {
 
     test("String", () => {
       const config = createRewriteRule({ url: "https://test.changed" });
-      expect(cpurl(config).url).toBe("https://test.changed");
+      expect(processUrl(config).url).toBe("https://test.changed");
     });
 
     test("Function", () => {
       const config = createRewriteRule({
         url: () => "https://test.changed",
       });
-      expect(cpurl(config).url).toBe("https://test.changed");
+      expect(processUrl(config).url).toBe("https://test.changed");
     });
 
     test("Function arguments", () => {
       const config = createRewriteRule({
         url: ({ urlString }) => urlString + "?ok",
       });
-      expect(cpurl(config).url).toBe("https://test.example?ok");
+      expect(processUrl(config).url).toBe("https://test.example?ok");
     });
 
     test("Function argument object", () => {
       const config = createRewriteRule({
         url: ({ urlString, url }) => urlString + "?" + url.protocol,
       });
-      expect(cpurl(config).url).toBe("https://test.example?https");
+      expect(processUrl(config).url).toBe("https://test.example?https");
     });
 
     test("Object result ", () => {
       const config = createRewriteRule({
-        url: id({
+        url: () => ({
           host: "test2.example",
         }),
       });
-      expect(cpurl(config).url).toBe("https://test2.example");
+      expect(processUrl(config).url).toBe("https://test2.example");
     });
   });
 
@@ -100,7 +102,7 @@ describe("Rewrites", () => {
 
     test("Protocol change", () => {
       const config = createRewriteRule({ url: { protocol: "ftp" } });
-      const result = cpurl(config, "http://example.com");
+      const result = processUrl(config, "http://example.com");
       expect(result.url).toBe("ftp://example.com");
     });
 
@@ -108,7 +110,7 @@ describe("Rewrites", () => {
       const config = createRewriteRule({
         url: { host: "example.org" },
       });
-      const result = cpurl(config, "http://example.com");
+      const result = processUrl(config, "http://example.com");
       expect(result.url).toBe("http://example.org");
     });
 
@@ -116,14 +118,11 @@ describe("Rewrites", () => {
       const config = createRewriteRule({
         url: { hash: "anchor", port: 1234, pathname: "/a/path" },
       });
-      const result = cpurl(config, "http://example.com");
+      const result = processUrl(config, "http://example.com");
       expect(result.url).toBe("http://example.com:1234/a/path#anchor");
     });
   });
 });
-
-const CHANGED_BROWSER = "Custom Browser";
-const EXAMPLE_BUNDLEID = "bundle.id";
 
 describe("Handlers", () => {
   describe("Matcher", () => {
@@ -134,17 +133,17 @@ describe("Handlers", () => {
     test("function that returns true", () => {
       const config = createHandlerConfig({
         browser: CHANGED_BROWSER,
-        match: id(true),
+        match: () => true,
       });
-      expect(cpurl(config).browsers[0].name).toBe(CHANGED_BROWSER);
+      expect(processUrl(config).browsers[0].name).toBe(CHANGED_BROWSER);
     });
 
     test("function that returns false", () => {
       const config = createHandlerConfig({
         browser: CHANGED_BROWSER,
-        match: id(false),
+        match: () => false,
       });
-      expect(cpurl(config).browsers[0].name).not.toBe(CHANGED_BROWSER);
+      expect(processUrl(config).browsers[0].name).not.toBe(CHANGED_BROWSER);
     });
 
     test("match regular expression", () => {
@@ -152,7 +151,7 @@ describe("Handlers", () => {
         browser: CHANGED_BROWSER,
         match: /test\.example/,
       });
-      expect(cpurl(config).browsers[0].name).toBe(CHANGED_BROWSER);
+      expect(processUrl(config).browsers[0].name).toBe(CHANGED_BROWSER);
     });
 
     test("match string", () => {
@@ -160,7 +159,7 @@ describe("Handlers", () => {
         browser: CHANGED_BROWSER,
         match: "https://test.example",
       });
-      expect(cpurl(config).browsers[0].name).toBe(CHANGED_BROWSER);
+      expect(processUrl(config).browsers[0].name).toBe(CHANGED_BROWSER);
     });
 
     test("match wildcard pattern", () => {
@@ -168,7 +167,7 @@ describe("Handlers", () => {
         browser: CHANGED_BROWSER,
         match: "https://test.example/*",
       });
-      const result = cpurl(
+      const result = processUrl(
         config,
         "https://test.example/path?query=123#anchor"
       );
@@ -181,9 +180,9 @@ describe("Handlers", () => {
       test("string", () => {
         const config = createHandlerConfig({
           browser: CHANGED_BROWSER,
-          match: id(true),
+          match: () => true,
         });
-        expect(cpurl(config).browsers[0]).toEqual({
+        expect(processUrl(config).browsers[0]).toEqual({
           name: CHANGED_BROWSER,
           appType: "appName",
         });
@@ -191,10 +190,10 @@ describe("Handlers", () => {
 
       test("string function", () => {
         const config = createHandlerConfig({
-          browser: id(CHANGED_BROWSER),
-          match: id(true),
+          browser: () => CHANGED_BROWSER,
+          match: () => true,
         });
-        expect(cpurl(config).browsers[0]).toEqual({
+        expect(processUrl(config).browsers[0]).toEqual({
           name: CHANGED_BROWSER,
           appType: "appName",
         });
@@ -203,9 +202,9 @@ describe("Handlers", () => {
       test("object", () => {
         const config = createHandlerConfig({
           browser: { name: CHANGED_BROWSER },
-          match: id(true),
+          match: () => true,
         });
-        expect(cpurl(config).browsers[0]).toEqual({
+        expect(processUrl(config).browsers[0]).toEqual({
           name: CHANGED_BROWSER,
           appType: "appName",
         });
@@ -213,10 +212,10 @@ describe("Handlers", () => {
 
       test("object function", () => {
         const config = createHandlerConfig({
-          browser: id({ name: CHANGED_BROWSER }),
-          match: id(true),
+          browser: () => ({ name: CHANGED_BROWSER }),
+          match: () => true,
         });
-        expect(cpurl(config).browsers[0]).toEqual({
+        expect(processUrl(config).browsers[0]).toEqual({
           name: CHANGED_BROWSER,
           appType: "appName",
         });
@@ -227,9 +226,9 @@ describe("Handlers", () => {
       test("string", () => {
         const config = createHandlerConfig({
           browser: EXAMPLE_BUNDLEID,
-          match: id(true),
+          match: () => true,
         });
-        expect(cpurl(config).browsers[0]).toEqual({
+        expect(processUrl(config).browsers[0]).toEqual({
           name: EXAMPLE_BUNDLEID,
           appType: "bundleId",
         });
@@ -237,10 +236,10 @@ describe("Handlers", () => {
 
       test("string function", () => {
         const config = createHandlerConfig({
-          browser: id(EXAMPLE_BUNDLEID),
-          match: id(true),
+          browser: () => EXAMPLE_BUNDLEID,
+          match: () => true,
         });
-        expect(cpurl(config).browsers[0]).toEqual({
+        expect(processUrl(config).browsers[0]).toEqual({
           name: EXAMPLE_BUNDLEID,
           appType: "bundleId",
         });
@@ -249,9 +248,9 @@ describe("Handlers", () => {
       test("object", () => {
         const config = createHandlerConfig({
           browser: { name: EXAMPLE_BUNDLEID },
-          match: id(true),
+          match: () => true,
         });
-        expect(cpurl(config).browsers[0]).toEqual({
+        expect(processUrl(config).browsers[0]).toEqual({
           name: EXAMPLE_BUNDLEID,
           appType: "bundleId",
         });
@@ -259,10 +258,10 @@ describe("Handlers", () => {
 
       test("object function", () => {
         const config = createHandlerConfig({
-          browser: id({ name: EXAMPLE_BUNDLEID }),
-          match: id(true),
+          browser: () => ({ name: EXAMPLE_BUNDLEID }),
+          match: () => true,
         });
-        expect(cpurl(config).browsers[0]).toEqual({
+        expect(processUrl(config).browsers[0]).toEqual({
           name: EXAMPLE_BUNDLEID,
           appType: "bundleId",
         });
@@ -275,9 +274,9 @@ describe("Handlers", () => {
       const config = createHandlerConfig({
         browser: CHANGED_BROWSER,
         url: "https://test.changed",
-        match: id(true),
+        match: () => true,
       });
-      const result = cpurl(config);
+      const result = processUrl(config);
       expect(result.browsers[0].name).toBe(CHANGED_BROWSER);
       expect(result.url).toBe("https://test.changed");
     });
