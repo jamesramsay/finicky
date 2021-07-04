@@ -1,39 +1,5 @@
-import { parseUrl, matchHostnames } from "./decorateAPI";
 import { z } from "zod";
-
-/**
- * Finicky API Types
- */
-
-type LogFunction = (...messages: string[]) => void;
-type NotifyFunction = (title: string, subtitle: string) => void;
-type BatteryFunction = () => {
-  chargePercentage: number;
-  isCharging: boolean;
-  isPluggedIn: boolean;
-};
-
-type SystemInfoFunction = () => {
-  name: string;
-  localizedName: string;
-  address: string;
-};
-
-// Finicky Config API
-export interface ConfigAPI extends InternalAPI {
-  getUrlParts: typeof parseUrl;
-  parseUrl: typeof parseUrl;
-  matchHostnames: typeof matchHostnames;
-  matchDomains: typeof matchHostnames;
-}
-
-export interface InternalAPI {
-  log: LogFunction;
-  notify: NotifyFunction;
-  getBattery: BatteryFunction;
-  getSystemInfo: SystemInfoFunction;
-  getKeys(): KeyOptions;
-}
+import { parseUrl } from "./parseUrl";
 
 /**
  * Finicky Configuration Schemas and Types
@@ -102,7 +68,15 @@ const appType = z.union([
 
 export type AppType = z.infer<typeof appType>;
 
-export const browserObject = z.object({
+export const browserObjectSchema = z.object({
+  name: z.string(),
+  openInBackground: z.boolean().optional(),
+  appType: appType,
+  profile: z.string().optional(),
+  args: z.array(z.string()).optional(),
+});
+
+export const browserObjectConfigSchema = z.object({
   name: z.string(),
   openInBackground: z.boolean().optional(),
   appType: appType.optional(),
@@ -110,23 +84,28 @@ export const browserObject = z.object({
   args: z.array(z.string()).optional(),
 });
 
-const browserValue = z.union([z.string(), z.literal(null), browserObject]);
+const browserValueSchema = z.union([
+  z.string(),
+  z.literal(null),
+  browserObjectSchema,
+]);
 
 const browserFunction = z
   .function()
   .args(functionOptions)
-  .returns(browserValue);
+  .returns(browserValueSchema);
 
-const matcherFunction = z.function().args(functionOptions).returns(z.boolean());
+const browserSchema = browserFunction.or(browserValueSchema);
 
-const browserSchema = browserFunction.or(browserValue);
+const browserConfigValueSchema = z.union([
+  browserSchema,
+  z.array(browserSchema),
+]);
 
-const browserResult = z.union([browserSchema, z.array(browserSchema)]);
-
-export type BrowserValue = z.infer<typeof browserValue>;
-export type BrowserObject = z.infer<typeof browserObject>;
+export type BrowserValue = z.infer<typeof browserValueSchema>;
+export type BrowserObject = z.infer<typeof browserObjectSchema>;
 export type Browser = z.infer<typeof browserSchema>;
-export type BrowserResult = z.infer<typeof browserResult>;
+export type BrowserConfigValue = z.infer<typeof browserConfigValueSchema>;
 
 /******************
  * Options
@@ -135,7 +114,7 @@ export type BrowserResult = z.infer<typeof browserResult>;
 
 const hostnames = z.array(z.string());
 
-const options = z.object({
+export const globalOptionsSchema = z.object({
   hideIcon: z.boolean().default(false),
   checkForUpdate: z.boolean().default(true),
   logRequests: z.boolean().default(false),
@@ -149,9 +128,24 @@ const options = z.object({
  * Matching
  ******************/
 
+const matcherFunction = z.function().args(functionOptions).returns(z.boolean());
+
 const matcher = z.union([z.string(), z.instanceof(RegExp), matcherFunction]);
 
 export type Matcher = z.infer<typeof matcher>;
+
+const hostnameMatcherFunction = z
+  .function()
+  .args(z.string(), functionOptions)
+  .returns(z.boolean());
+
+const hostnameMatcher = z.union([
+  z.string(),
+  z.instanceof(RegExp),
+  hostnameMatcherFunction,
+]);
+
+export type HostnameMatcher = z.infer<typeof hostnameMatcher>;
 
 /******************
  * Rewriting
@@ -160,7 +154,10 @@ export type Matcher = z.infer<typeof matcher>;
 const urlResultSchema = z.union([urlResult, urlFunction]);
 
 const rewriter = z.object({
-  match: z.union([matcher, z.array(matcher)]),
+  match: z.union([matcher, z.array(matcher)]).optional(),
+  matchHostname: z
+    .union([hostnameMatcher, z.array(hostnameMatcher)])
+    .optional(),
   url: urlResultSchema,
 });
 
@@ -172,7 +169,10 @@ export type Rewriter = z.infer<typeof rewriter>;
 
 const handler = rewriter.extend({
   browser: z.union([browserSchema, z.array(browserSchema)]),
-  match: z.union([matcher, z.array(matcher)]),
+  match: z.union([matcher, z.array(matcher)]).optional(),
+  matchHostname: z
+    .union([hostnameMatcher, z.array(hostnameMatcher)])
+    .optional(),
   url: urlResultSchema.optional(),
 });
 
@@ -187,27 +187,15 @@ export type ProcessUrlResult = {
  * Full config
  ******************/
 
-export const configSchema = z
+export const finickyConfigSchema = z
   .object({
-    defaultBrowser: browserResult.default("Safari"),
-    options: options.partial().optional(),
+    defaultBrowser: browserConfigValueSchema.default("Safari"),
+    options: globalOptionsSchema.partial().optional(),
     rewrite: z.array(rewriter).optional(),
     handlers: z.array(handler).optional(),
   })
   .strict();
 
-export type FinickyConfig = z.infer<typeof configSchema>;
+console.log(finickyConfigSchema.parse({}));
 
-/**
- * An object that represents a key options object
- */
-const keyOptions = z.object({
-  shift: z.boolean().default(false),
-  option: z.boolean().default(false),
-  command: z.boolean().default(false),
-  control: z.boolean().default(false),
-  capsLock: z.boolean().default(false),
-  function: z.boolean().default(false),
-});
-
-type KeyOptions = z.infer<typeof keyOptions>;
+export type FinickyConfig = z.infer<typeof finickyConfigSchema>;

@@ -1,4 +1,4 @@
-import { ConfigAPI } from "../src/types";
+import { ConfigAPI } from "../types";
 import {
   curryProcessUrl,
   createRewriteRule,

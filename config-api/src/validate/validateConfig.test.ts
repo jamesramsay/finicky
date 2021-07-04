@@ -1,4 +1,4 @@
-import { validateConfig } from "../src/validateConfig";
+import { validateConfig } from "./validateConfig";
 
 describe("basic test", () => {
   test("invalid config", () => {

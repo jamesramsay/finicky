@@ -1,4 +1,4 @@
-import { createRegularExpression } from "../src/utils";
+import { createRegularExpression } from "./matching";
 
 test("Generates regular expression strings", () => {
   let re = createRegularExpression("http://example.com");

@@ -1,5 +1,5 @@
-export { processUrl } from "./processUrl";
+export { resolveBrowserTask } from "./resolve";
 
-export { validateConfig } from "./validateConfig";
+export { validateConfig } from "./validate/";
 
-export { decorateAPI } from "./decorateAPI";
+export { decorateAPI } from "./api/";

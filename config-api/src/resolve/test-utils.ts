@@ -1,8 +1,8 @@
 import chalk from "chalk";
-import { decorateAPI } from "../src";
-import { processUrl } from "../src/processUrl";
-import { FinickyConfig, Handler, Rewriter } from "../src/types";
-import { Matcher, UrlObject, URL, URLFunction } from "../src/types";
+import { UrlObject } from "url";
+import { decorateAPI } from "..";
+import { FinickyConfig, URLFunction, Matcher, Handler, URL } from "../types";
+import { resolveBrowserTask } from "./resolveBrowserTask";
 
 export function curryProcessUrl(url: string) {
   const opener = {
@@ -13,7 +13,7 @@ export function curryProcessUrl(url: string) {
   };
 
   return (config: FinickyConfig, otherUrl?: string) =>
-    processUrl(config, otherUrl || url, opener);
+    resolveBrowserTask(config, otherUrl || url, opener);
 }
 
 export function createRewriteRule({
